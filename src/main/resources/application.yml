@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: AiDevs
+tasks:
+  baseUrl: ${AIDEVS_TASKS_URL}
+  apiKey: ${AIDEVS_API_KEY}
