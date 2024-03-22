@@ -1,6 +1,9 @@
 spring:
   application:
     name: AiDevs
+  ai:
+    openai:
+      api-key: ${OPEN_AI_API_KEY}
 tasks:
   baseUrl: ${AIDEVS_TASKS_URL}
   apiKey: ${AIDEVS_API_KEY}

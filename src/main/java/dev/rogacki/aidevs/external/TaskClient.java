@@ -29,14 +29,14 @@ public class TaskClient {
             .toEntity(TokenResponse.class);
     }
 
-    public Map<?, ?> getTask(String token) { // TODO think what object would you use for not strictly defined JSON
+    public <T> T getTask(String token, Class<T> type) {
         return taskRestClient.get()
             .uri("/task/{token}", token)
             .retrieve()
-            .body(Map.class);
+            .body(type);
     }
 
-    public ResponseEntity<AnswerResponse> postAnswer(String token, String answer) {
+    public ResponseEntity<AnswerResponse> postAnswer(String token, Object answer) {
         return taskRestClient.post()
             .uri("/answer/{token}", token)
             .body(Map.of("answer", answer))

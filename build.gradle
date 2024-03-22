@@ -23,6 +23,11 @@ java {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation platform("org.springframework.ai:spring-ai-bom:0.8.1-SNAPSHOT")
+    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter'
+    implementation 'com.theokanning.openai-gpt3-java:service:0.18.2'
+
+
     compileOnly 'org.projectlombok:lombok:1.18.32'
     annotationProcessor 'org.projectlombok:lombok:1.18.32'
 
