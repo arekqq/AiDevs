@@ -1,10 +1,13 @@
 package dev.rogacki.aidevs.external;
 
+import dev.rogacki.aidevs.AiDevsApplication;
 import dev.rogacki.aidevs.dto.AnswerResponse;
 import dev.rogacki.aidevs.dto.TokenResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.util.Map;
@@ -42,5 +45,17 @@ public class TaskClient {
             .body(Map.of("answer", answer))
             .retrieve()
             .toEntity(AnswerResponse.class);
+    }
+
+    public AiDevsApplication.LiarAnswerResponse postQuestionForm(String token, String question) {
+        LinkedMultiValueMap<String, String> map;
+        map = new LinkedMultiValueMap<>();
+        map.add("question", question);
+        return taskRestClient.post()
+            .uri("/task/{token}", token)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(map)
+            .retrieve()
+            .body(AiDevsApplication.LiarAnswerResponse.class);
     }
 }

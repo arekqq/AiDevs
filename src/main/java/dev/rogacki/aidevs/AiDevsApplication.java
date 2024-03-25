@@ -11,8 +11,11 @@ import dev.rogacki.aidevs.dto.AnswerResponse;
 import dev.rogacki.aidevs.dto.TokenResponse;
 import dev.rogacki.aidevs.external.TaskClient;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.embedding.EmbeddingClient;
 import org.springframework.ai.openai.OpenAiChatClient;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -35,19 +38,65 @@ public class AiDevsApplication {
 
     @Bean
     ApplicationRunner applicationRunner(TaskClient taskClient,
-                                        OpenAiChatClient openAiChatClient,
+                                        OpenAiChatClient springOpenAiClient,
                                         @Value("${spring.ai.openai.api-key}") String openAiToken) {
         return _ -> {
-//            springAi(openAiChatClient);
+            springAi(springOpenAiClient);
 //            var answerResponse = getAnswerResponseResponseEntity(taskClient);
 //            log.info(answerResponse.toString());
 //            theoKanningOpenAi(openAiToken);
-            moderationsTask(taskClient, openAiToken);
+//            moderationsTask(taskClient, openAiToken);
+//            bloggerTask(taskClient, openAiToken);
+//            liarTask(taskClient, springOpenAiClient, openAiToken);
         };
     }
 
+    private void liarTask(TaskClient taskClient, OpenAiChatClient openAiChatClient, String openAiToken) {
+        var token = getToken(taskClient, "liar");
+        var task = taskClient.getTask(token, LiarTask.class);
+        log.info(task.toString());
+        String question = "What is the capitol of France?";
+        LiarAnswerResponse liarAnswerResponse = taskClient.postQuestionForm(token, question);
+        String message = STR
+            ."""
+            Check if below answer is a response to this specific question. Respond only with one word "yes" or "no".
+            question: \{question}
+            answer: \{liarAnswerResponse.answer}
+            """;
+        ChatResponse call = openAiChatClient.call(new Prompt(message));
+        String isItRealAnswer = call.getResults().getFirst().getOutput().getContent();
+        ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, isItRealAnswer);
+        log.info(answerResponseResponseEntity.toString());
+    }
+
+    private void bloggerTask(TaskClient taskClient, String openAiToken) {
+        var token = getToken(taskClient, "blogger");
+        var task = taskClient.getTask(token, BloggerTask.class);
+        OpenAiService openAiService = new OpenAiService(openAiToken);
+        List<String> chapters = new ArrayList<>();
+        task.blog.forEach(chapter -> {
+            var systemTemplate = STR
+                ."""
+                Jako bloger napisz wpis o następującym temacie. Max 4-5 zdań.
+
+                temat###\{
+                chapter
+                }###
+                """;
+            ChatCompletionRequest completionRequest = ChatCompletionRequest.builder() // TODO gather all requests and response in next messages
+                .model("gpt-4")
+                .messages(List.of(new ChatMessage("user", systemTemplate)))
+                .build();
+            ChatCompletionResult completion = openAiService.createChatCompletion(completionRequest);
+            chapters.add(completion.getChoices().get(0).getMessage().getContent());
+            log.info(completion.toString());
+        });
+        ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, chapters);
+        log.info(answerResponseResponseEntity.getBody().toString());
+    }
+
     private void moderationsTask(TaskClient taskClient, String openAiToken) {
-        var token = getToken(taskClient);
+        var token = getToken(taskClient, "moderation");
         var task = taskClient.getTask(token, ModerationTask.class);
         OpenAiService openAiService = new OpenAiService(openAiToken);
         List<Integer> moderationsOutput = new ArrayList<>();
@@ -64,8 +113,8 @@ public class AiDevsApplication {
         ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, moderationsOutput);
     }
 
-    private static String getToken(TaskClient taskClient) {
-        var tokenResponse = taskClient.getToken("moderation");
+    private static String getToken(TaskClient taskClient, String taskName) {
+        var tokenResponse = taskClient.getToken(taskName);
         return Optional.ofNullable(tokenResponse.getBody())
             .map(TokenResponse::token)
             .orElseThrow();
@@ -81,7 +130,7 @@ public class AiDevsApplication {
         log.info(completion.toString());
     }
 
-    private static void springAi(OpenAiChatClient openAiChatClient) {
+    private void springAi(OpenAiChatClient openAiChatClient) {
         var role = "developer";
         var context = "awdaw";
         var systemTemplate = STR
@@ -107,6 +156,29 @@ public class AiDevsApplication {
         Integer code,
         String msg,
         List<String> input
+    ) {
+    }
+
+    public record BloggerTask(
+        Integer code,
+        String msg,
+        List<String> blog
+    ) {
+    }
+
+    public record LiarTask(
+        Integer code,
+        String msg,
+        String hint1,
+        String hint2,
+        String hint3
+    ) {
+    }
+
+    public record LiarAnswerResponse(
+        Integer code,
+        String msg,
+        String answer
     ) {
     }
 
