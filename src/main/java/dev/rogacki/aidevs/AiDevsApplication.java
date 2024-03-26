@@ -13,9 +13,7 @@ import dev.rogacki.aidevs.external.TaskClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.embedding.EmbeddingClient;
 import org.springframework.ai.openai.OpenAiChatClient;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -41,17 +39,41 @@ public class AiDevsApplication {
                                         OpenAiChatClient springOpenAiClient,
                                         @Value("${spring.ai.openai.api-key}") String openAiToken) {
         return _ -> {
-            springAi(springOpenAiClient);
+//            springAi(springOpenAiClient);
 //            var answerResponse = getAnswerResponseResponseEntity(taskClient);
 //            log.info(answerResponse.toString());
 //            theoKanningOpenAi(openAiToken);
 //            moderationsTask(taskClient, openAiToken);
 //            bloggerTask(taskClient, openAiToken);
 //            liarTask(taskClient, springOpenAiClient, openAiToken);
+//            inpromptTask(taskClient, springOpenAiClient);
         };
     }
 
-    private void liarTask(TaskClient taskClient, OpenAiChatClient openAiChatClient, String openAiToken) {
+    private void inpromptTask(TaskClient taskClient, OpenAiChatClient springOpenAiClient) {
+        var token = getToken(taskClient, "inprompt");
+        var task = taskClient.getTask(token, InpromptTask.class);
+        String name = springOpenAiClient.call(STR
+            ."""
+            Return a name from below question. The name start with capital letter:
+            \{task.question}
+            """);
+        List<String> contextFilteredByName = task.input.stream()
+            .filter(input -> input.contains(name))
+            .toList();
+        String answer = springOpenAiClient.call(STR
+            ."""
+            Answer below question using the context:
+            context:
+            \{contextFilteredByName}
+            question:
+            \{task.question}
+            """);
+        ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, answer);
+        log.info(answerResponseResponseEntity.toString());
+    }
+
+    private void liarTask(TaskClient taskClient, OpenAiChatClient openAiChatClient) {
         var token = getToken(taskClient, "liar");
         var task = taskClient.getTask(token, LiarTask.class);
         log.info(task.toString());
@@ -60,8 +82,8 @@ public class AiDevsApplication {
         String message = STR
             ."""
             Check if below answer is a response to this specific question. Respond only with one word "yes" or "no".
-            question: \{question}
-            answer: \{liarAnswerResponse.answer}
+            question:\{question}
+            answer:\{liarAnswerResponse.answer}
             """;
         ChatResponse call = openAiChatClient.call(new Prompt(message));
         String isItRealAnswer = call.getResults().getFirst().getOutput().getContent();
@@ -88,7 +110,7 @@ public class AiDevsApplication {
                 .messages(List.of(new ChatMessage("user", systemTemplate)))
                 .build();
             ChatCompletionResult completion = openAiService.createChatCompletion(completionRequest);
-            chapters.add(completion.getChoices().get(0).getMessage().getContent());
+            chapters.add(completion.getChoices().stream().findFirst().map(c -> c.getMessage().getContent()).orElseThrow());
             log.info(completion.toString());
         });
         ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, chapters);
@@ -180,6 +202,13 @@ public class AiDevsApplication {
         String msg,
         String answer
     ) {
+    }
+
+    public record InpromptTask(
+        Integer code,
+        String msg,
+        List<String> input,
+        String question) {
     }
 
 
