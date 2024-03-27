@@ -13,7 +13,11 @@ import dev.rogacki.aidevs.external.TaskClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.embedding.EmbeddingClient;
+import org.springframework.ai.embedding.EmbeddingRequest;
+import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.openai.OpenAiChatClient;
+import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -37,7 +41,8 @@ public class AiDevsApplication {
     @Bean
     ApplicationRunner applicationRunner(TaskClient taskClient,
                                         OpenAiChatClient springOpenAiClient,
-                                        @Value("${spring.ai.openai.api-key}") String openAiToken) {
+                                        @Value("${spring.ai.openai.api-key}") String openAiToken,
+                                        EmbeddingClient embeddingClient) {
         return _ -> {
 //            springAi(springOpenAiClient);
 //            var answerResponse = getAnswerResponseResponseEntity(taskClient);
@@ -47,7 +52,33 @@ public class AiDevsApplication {
 //            bloggerTask(taskClient, openAiToken);
 //            liarTask(taskClient, springOpenAiClient, openAiToken);
 //            inpromptTask(taskClient, springOpenAiClient);
+            embeddingTask(taskClient, embeddingClient);
         };
+    }
+
+    private void embeddingTask(TaskClient taskClient, EmbeddingClient embeddingClient) {
+        var token = getToken(taskClient, "embedding");
+        var task = taskClient.getTask(token, EmbeddingTask.class);
+        log.info(task.toString());
+        String stringForEmbedding = extractStringForEmbedding(task);
+        EmbeddingRequest embeddingRequest =  new EmbeddingRequest(List.of(stringForEmbedding),
+            OpenAiEmbeddingOptions.builder()
+                .withModel("text-embedding-ada-002")
+                .build());
+        EmbeddingResponse embeddingResponse = embeddingClient.call(embeddingRequest);
+        log.info(String.valueOf(embeddingResponse.getResults().size()));
+        List<Double> result = embeddingResponse.getResult().getOutput();
+        ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, result);
+        log.info(answerResponseResponseEntity.toString());
+    }
+
+    private String extractStringForEmbedding(EmbeddingTask task) {
+        String[] parts = task.msg.split(":");
+        if (parts.length >= 2) {
+            return parts[1].trim();
+        } else {
+            throw new IllegalArgumentException("Colon not found in the input string.");
+        }
     }
 
     private void inpromptTask(TaskClient taskClient, OpenAiChatClient springOpenAiClient) {
@@ -209,6 +240,14 @@ public class AiDevsApplication {
         String msg,
         List<String> input,
         String question) {
+    }
+
+    public record EmbeddingTask(
+        Integer code,
+        String msg,
+        String hint1,
+        String hint2,
+        String hint3) {
     }
 
 
