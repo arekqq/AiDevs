@@ -1,7 +1,7 @@
 package dev.rogacki.aidevs.external;
 
-import dev.rogacki.aidevs.AiDevsApplication;
 import dev.rogacki.aidevs.dto.AnswerResponse;
+import dev.rogacki.aidevs.dto.LiarAnswerResponse;
 import dev.rogacki.aidevs.dto.TokenResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -47,7 +47,7 @@ public class TaskClient {
             .toEntity(AnswerResponse.class);
     }
 
-    public AiDevsApplication.LiarAnswerResponse postQuestionForm(String token, String question) {
+    public LiarAnswerResponse postQuestionForm(String token, String question) {
         LinkedMultiValueMap<String, String> map;
         map = new LinkedMultiValueMap<>();
         map.add("question", question);
@@ -56,6 +56,6 @@ public class TaskClient {
             .contentType(MediaType.MULTIPART_FORM_DATA)
             .body(map)
             .retrieve()
-            .body(AiDevsApplication.LiarAnswerResponse.class);
+            .body(LiarAnswerResponse.class);
     }
 }

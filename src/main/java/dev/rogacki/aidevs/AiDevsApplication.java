@@ -8,16 +8,19 @@ import com.theokanning.openai.moderation.ModerationRequest;
 import com.theokanning.openai.moderation.ModerationResult;
 import com.theokanning.openai.service.OpenAiService;
 import dev.rogacki.aidevs.dto.AnswerResponse;
+import dev.rogacki.aidevs.dto.BloggerTask;
+import dev.rogacki.aidevs.dto.EmbeddingTask;
+import dev.rogacki.aidevs.dto.InpromptTask;
+import dev.rogacki.aidevs.dto.LiarAnswerResponse;
+import dev.rogacki.aidevs.dto.LiarTask;
+import dev.rogacki.aidevs.dto.ModerationTask;
 import dev.rogacki.aidevs.dto.TokenResponse;
 import dev.rogacki.aidevs.external.TaskClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.embedding.EmbeddingClient;
-import org.springframework.ai.embedding.EmbeddingRequest;
-import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.openai.OpenAiChatClient;
-import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -60,20 +63,20 @@ public class AiDevsApplication {
         var token = getToken(taskClient, "embedding");
         var task = taskClient.getTask(token, EmbeddingTask.class);
         log.info(task.toString());
-        String stringForEmbedding = extractStringForEmbedding(task);
-        EmbeddingRequest embeddingRequest =  new EmbeddingRequest(List.of(stringForEmbedding),
-            OpenAiEmbeddingOptions.builder()
-                .withModel("text-embedding-ada-002")
-                .build());
-        EmbeddingResponse embeddingResponse = embeddingClient.call(embeddingRequest);
-        log.info(String.valueOf(embeddingResponse.getResults().size()));
-        List<Double> result = embeddingResponse.getResult().getOutput();
-        ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, result);
-        log.info(answerResponseResponseEntity.toString());
+//        String stringForEmbedding = extractStringForEmbedding(task);
+//        EmbeddingRequest embeddingRequest =  new EmbeddingRequest(List.of(stringForEmbedding),
+//            OpenAiEmbeddingOptions.builder()
+//                .withModel("text-embedding-ada-002")
+//                .build());
+//        EmbeddingResponse embeddingResponse = embeddingClient.call(embeddingRequest);
+//        log.info(String.valueOf(embeddingResponse.getResults().size()));
+//        List<Double> result = embeddingResponse.getResult().getOutput();
+//        ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, result);
+//        log.info(answerResponseResponseEntity.toString());
     }
 
     private String extractStringForEmbedding(EmbeddingTask task) {
-        String[] parts = task.msg.split(":");
+        String[] parts = task.getMsg().split(":");
         if (parts.length >= 2) {
             return parts[1].trim();
         } else {
@@ -87,9 +90,9 @@ public class AiDevsApplication {
         String name = springOpenAiClient.call(STR
             ."""
             Return a name from below question. The name start with capital letter:
-            \{task.question}
+            \{task.question()}
             """);
-        List<String> contextFilteredByName = task.input.stream()
+        List<String> contextFilteredByName = task.input().stream()
             .filter(input -> input.contains(name))
             .toList();
         String answer = springOpenAiClient.call(STR
@@ -98,7 +101,7 @@ public class AiDevsApplication {
             context:
             \{contextFilteredByName}
             question:
-            \{task.question}
+            \{task.question()}
             """);
         ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, answer);
         log.info(answerResponseResponseEntity.toString());
@@ -114,7 +117,7 @@ public class AiDevsApplication {
             ."""
             Check if below answer is a response to this specific question. Respond only with one word "yes" or "no".
             question:\{question}
-            answer:\{liarAnswerResponse.answer}
+            answer:\{liarAnswerResponse.answer()}
             """;
         ChatResponse call = openAiChatClient.call(new Prompt(message));
         String isItRealAnswer = call.getResults().getFirst().getOutput().getContent();
@@ -127,7 +130,7 @@ public class AiDevsApplication {
         var task = taskClient.getTask(token, BloggerTask.class);
         OpenAiService openAiService = new OpenAiService(openAiToken);
         List<String> chapters = new ArrayList<>();
-        task.blog.forEach(chapter -> {
+        task.blog().forEach(chapter -> {
             var systemTemplate = STR
                 ."""
                 Jako bloger napisz wpis o następującym temacie. Max 4-5 zdań.
@@ -153,7 +156,7 @@ public class AiDevsApplication {
         var task = taskClient.getTask(token, ModerationTask.class);
         OpenAiService openAiService = new OpenAiService(openAiToken);
         List<Integer> moderationsOutput = new ArrayList<>();
-        task.input.forEach(input -> {
+        task.input().forEach(input -> {
             ModerationRequest moderationRequest = ModerationRequest.builder()
                 .input(input)
                 .model("text-moderation-latest")
@@ -203,51 +206,6 @@ public class AiDevsApplication {
         var task = taskClient.getTask(tokenBody.token(), Map.class);
         var answerResponse = taskClient.postAnswer(token.getBody().token(), task.get("cookie").toString());
         return answerResponse;
-    }
-
-    public record ModerationTask(
-        Integer code,
-        String msg,
-        List<String> input
-    ) {
-    }
-
-    public record BloggerTask(
-        Integer code,
-        String msg,
-        List<String> blog
-    ) {
-    }
-
-    public record LiarTask(
-        Integer code,
-        String msg,
-        String hint1,
-        String hint2,
-        String hint3
-    ) {
-    }
-
-    public record LiarAnswerResponse(
-        Integer code,
-        String msg,
-        String answer
-    ) {
-    }
-
-    public record InpromptTask(
-        Integer code,
-        String msg,
-        List<String> input,
-        String question) {
-    }
-
-    public record EmbeddingTask(
-        Integer code,
-        String msg,
-        String hint1,
-        String hint2,
-        String hint3) {
     }
 
 
