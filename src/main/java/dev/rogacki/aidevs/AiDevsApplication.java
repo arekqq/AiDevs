@@ -17,8 +17,6 @@ public class AiDevsApplication {
 
     @Bean
     ApplicationRunner applicationRunner(TaskService taskService) {
-        return _ -> {
-            taskService.embeddingTask();
-        };
+        return _ -> taskService.whisperTask();
     }
 }
