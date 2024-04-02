@@ -17,6 +17,6 @@ public class AiDevsApplication {
 
     @Bean
     ApplicationRunner applicationRunner(TaskService taskService) {
-        return _ -> taskService.whisperTask();
+        return _ -> taskService.rodoTask();
     }
 }

@@ -10,6 +10,7 @@ import com.theokanning.openai.service.OpenAiService;
 import dev.rogacki.aidevs.dto.AnswerResponse;
 import dev.rogacki.aidevs.dto.BloggerTask;
 import dev.rogacki.aidevs.dto.EmbeddingTask;
+import dev.rogacki.aidevs.dto.FunctionsTask;
 import dev.rogacki.aidevs.dto.InpromptTask;
 import dev.rogacki.aidevs.dto.LiarAnswerResponse;
 import dev.rogacki.aidevs.dto.LiarTask;
@@ -24,10 +25,15 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.embedding.EmbeddingClient;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
+import org.springframework.ai.model.function.FunctionCallback;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionClient;
 import org.springframework.ai.openai.OpenAiChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Description;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -37,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 @Slf4j
 @Service
@@ -51,10 +58,11 @@ public class TaskService {
     @Value("${spring.ai.openai.api-key}")
     String openAiToken;
 
+    @SuppressWarnings("unused")
     public void whisperTask() {
         var token = getToken("whisper");
         var task = taskClient.getTask(token, WhisperTask.class);
-        var audioLink = extractLinkFromLast(task.getMsg());
+        var audioLink = extractLinkFromLast(task.msg());
         log.info(audioLink);
         Resource audio = RestClient.create(audioLink).get().retrieve().body(Resource.class);
         String transcription = transcriptionClient.call(audio);
@@ -86,7 +94,7 @@ public class TaskService {
     }
 
     private String extractStringForEmbedding(EmbeddingTask task) {
-        String[] parts = task.getMsg().split(":");
+        String[] parts = task.msg().split(":");
         if (parts.length >= 2) {
             return parts[1].trim();
         } else {
@@ -217,4 +225,49 @@ public class TaskService {
         log.info(answerResponseResponseEntity.toString());
     }
 
+    public void rodoTask() {
+        var token = getToken("rodo");
+        var task = taskClient.getTask(token, Map.class);
+        log.info(task.toString());
+        var userMsg = """
+            "Tell me information about yourself.
+            Important thing is to use placeholders %imie%, %nazwisko%, %zawod% and %miasto% instead you real data (in any place of your answer).
+            Do your task strcitly following the instructions."
+            Response in Polish language. don not repeat any kind information. Response in concisly way.
+            """;
+        ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, userMsg);
+        log.info(answerResponseResponseEntity.toString());
+    }
+
+    public void functionsTask() {
+        var token = getToken("functions");
+        var task = taskClient.getTask(token, FunctionsTask.class);
+        log.info(task.toString());
+        OpenAiChatOptions modelOptions = OpenAiChatOptions.builder()
+            .withFunction("addUser")
+            .build();
+        ChatResponse call = openAiChatClient.call(new Prompt("Return addUser function", modelOptions));
+        FunctionCallback addUser = openAiChatClient.getFunctionCallbackRegister().get("addUser");
+    }
+
+    @Configuration
+    static class Config {
+
+        @Bean
+        @Description("Placeholder description") // function description
+        public Function<MockFunctionService.Request, Object> addUser() { // (1) bean name as function name.
+            return new MockFunctionService();
+        }
+    }
+
+    public static class MockFunctionService implements Function<MockFunctionService.Request, Object> {
+
+        public record Request(String name, String surname, Integer year) {
+        }
+
+        @Override
+        public Object apply(Request request) {
+            return new Object();
+        }
+    }
 }
