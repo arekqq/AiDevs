@@ -4,6 +4,7 @@ import dev.rogacki.aidevs.dto.AnswerResponse;
 import dev.rogacki.aidevs.dto.LiarAnswerResponse;
 import dev.rogacki.aidevs.dto.TokenResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -33,6 +34,13 @@ public class TaskClient {
     }
 
     public <T> T getTask(String token, Class<T> type) {
+        return taskRestClient.get()
+            .uri("/task/{token}", token)
+            .retrieve()
+            .body(type);
+    }
+
+    public <T> T getTask(String token, ParameterizedTypeReference<T> type) {
         return taskRestClient.get()
             .uri("/task/{token}", token)
             .retrieve()
