@@ -1,6 +1,6 @@
 package dev.rogacki.aidevs;
 
-import dev.rogacki.aidevs.service.ScraperTaskService;
+import dev.rogacki.aidevs.service.WhoamiTaskService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -16,7 +16,7 @@ public class AiDevsApplication {
     }
 
     @Bean
-    ApplicationRunner applicationRunner(ScraperTaskService taskService) {
+    ApplicationRunner applicationRunner(WhoamiTaskService taskService) {
         return _ -> taskService.run();
     }
 }
