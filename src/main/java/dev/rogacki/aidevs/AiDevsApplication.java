@@ -1,6 +1,6 @@
 package dev.rogacki.aidevs;
 
-import dev.rogacki.aidevs.service.SearchTaskService;
+import dev.rogacki.aidevs.service.PeopleTaskService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -16,7 +16,7 @@ public class AiDevsApplication {
     }
 
     @Bean
-    ApplicationRunner applicationRunner(SearchTaskService taskService) {
+    ApplicationRunner applicationRunner(PeopleTaskService taskService) {
         return _ -> taskService.run();
     }
 }
