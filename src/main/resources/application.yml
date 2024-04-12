@@ -4,6 +4,9 @@ spring:
   ai:
     openai:
       api-key: ${OPEN_AI_API_KEY}
+    vectorstore:
+      qdrant:
+        collection-name: ai_devs
 tasks:
   baseUrl: ${AIDEVS_TASKS_URL}
   apiKey: ${AIDEVS_API_KEY}

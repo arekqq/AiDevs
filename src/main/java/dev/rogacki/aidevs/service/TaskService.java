@@ -62,18 +62,13 @@ public class TaskService {
     public void whisperTask() {
         var token = getToken("whisper");
         var task = taskClient.getTask(token, WhisperTask.class);
-        var audioLink = extractLinkFromLast(task.msg());
+        var audioLink = SplitterUtils.extractLinkFromLast(task.msg());
         log.info(audioLink);
         Resource audio = RestClient.create(audioLink).get().retrieve().body(Resource.class);
         String transcription = transcriptionClient.call(audio);
         log.info(transcription);
         ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, transcription);
         log.info(answerResponseResponseEntity.toString());
-    }
-
-    private String extractLinkFromLast(String input) {
-        String[] split = input.split(" ");
-        return split[split.length - 1];
     }
 
     @SuppressWarnings("unused")
