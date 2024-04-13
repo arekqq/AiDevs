@@ -23,7 +23,10 @@ public abstract class Task implements Runnable {
 
     protected ResponseEntity<AnswerResponse> postAnswer(Object answer) {
         try {
-            return taskClient.postAnswer(token, answer);
+            log.info("Posting answer: {}", answer);
+            ResponseEntity<AnswerResponse> answerResponseResponseEntity = taskClient.postAnswer(token, answer);
+            log.info(answerResponseResponseEntity.getStatusCode().toString());
+            return answerResponseResponseEntity;
         } catch (Exception e) {
             log.error("Error posting answer", e);
             return ResponseEntity.badRequest().build();
