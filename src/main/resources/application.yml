@@ -4,6 +4,9 @@ spring:
   ai:
     openai:
       api-key: ${OPEN_AI_API_KEY}
+      chat:
+        options:
+          model: gpt-3.5-turbo
     vectorstore:
       qdrant:
         collection-name: ai_devs
